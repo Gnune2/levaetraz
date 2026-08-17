@@ -5,6 +5,7 @@ import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.levaetraz.data.ApiClient
+import com.levaetraz.data.ApiException
 import com.levaetraz.data.IndiceBaixados
 import com.levaetraz.data.Prefs
 import com.levaetraz.data.PrefsLocais
@@ -162,10 +163,47 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             }
         }
         viewModelScope.launch { ws.eventos.collect(::aoReceberEvento) }
+        // O WS recusa com 4401 quando o token morreu; o REST pode nem ser
+        // chamado se o usuário estiver parado numa tela, então este é o
+        // caminho mais rápido de descobrir que o pareamento caiu.
+        viewModelScope.launch {
+            ws.ultimoErro.collect { erro ->
+                if (erro != null && erro.contains("token inválido")) perderSessao()
+            }
+        }
     }
 
     private fun recado(texto: String, erro: Boolean = false) {
         _recados.tryEmit(Recado(texto, erro))
+    }
+
+    /**
+     * Trata falha de chamada ao servidor, reagindo a sessão morta.
+     *
+     * Trocar a senha no PC revoga todas as sessões, e a partir daí o token
+     * guardado aqui não vale mais para nada — nem para `/api/auth/verify`, que
+     * é justamente a saída de emergência da trava biométrica. Sem apagar o
+     * pareamento, o app ficava preso: a digital recusada levava à senha, e a
+     * senha certa respondia "incorreta" porque a sessão já não existia.
+     *
+     * Então 401 significa uma coisa só: desparear e voltar para a tela de
+     * conexão, onde dá para entrar de novo com a senha nova.
+     */
+    private fun aoFalhar(erro: Throwable, contexto: String = "") {
+        if (erro is ApiException && erro.code == 401) {
+            perderSessao()
+            return
+        }
+        recado(erro.message ?: contexto.ifBlank { "falhou" }, erro = true)
+    }
+
+    private fun perderSessao() = viewModelScope.launch {
+        if (_servidor.value == null) return@launch
+        prefs.esquecerServidor()
+        _navegador.value = BrowserState()
+        _historico.value = HistoricoState()
+        _envio.value = EnvioState()
+        recado("a sessão deste celular foi encerrada no PC — pareie de novo", erro = true)
     }
 
     private fun aoReceberEvento(ev: EventoWs) {
@@ -262,9 +300,13 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                     erro = r.erro,
                 )
             }
-            .onFailure {
-                _navegador.value = _navegador.value.copy(
-                    carregando = false, erro = it.message ?: "não consegui listar")
+            .onFailure { erro ->
+                if (erro is ApiException && erro.code == 401) {
+                    perderSessao()
+                } else {
+                    _navegador.value = _navegador.value.copy(
+                        carregando = false, erro = erro.message ?: "não consegui listar")
+                }
             }
     }
 
@@ -449,13 +491,13 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         val s = _servidor.value ?: return@launch
         runCatching { api.limparEnvios(s); api.envios(s) }
             .onSuccess { _historico.value = HistoricoState(it.envios, it.resumo) }
-            .onFailure { recado(it.message ?: "não consegui limpar", erro = true) }
+            .onFailure { aoFalhar(it, "não consegui limpar") }
     }
 
     fun cancelarEnvioNoServidor(id: String) = viewModelScope.launch {
         val s = _servidor.value ?: return@launch
         runCatching { api.cancelarEnvio(s, id) }
-            .onFailure { recado(it.message ?: "não consegui cancelar", erro = true) }
+            .onFailure { aoFalhar(it, "não consegui cancelar") }
     }
 
     // ── ajustes ──────────────────────────────────────────────
@@ -465,8 +507,10 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         carregarPastasDoPc()
         runCatching { api.envios(s) }
             .onSuccess { _historico.value = HistoricoState(it.envios, it.resumo) }
+            .onFailure { aoFalhar(it) }
         runCatching { api.preferencias(s) }
             .onSuccess { _ajustes.value = _ajustes.value.copy(preferencias = it) }
+            .onFailure { aoFalhar(it) }
         _ajustes.value = _ajustes.value.copy(totalBaixados = indice.total())
     }
 
@@ -474,14 +518,14 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         val s = _servidor.value ?: return@launch
         runCatching { api.sessoes(s) }
             .onSuccess { _ajustes.value = _ajustes.value.copy(sessoes = it.sessoes) }
-            .onFailure { recado(it.message ?: "não consegui listar", erro = true) }
+            .onFailure { aoFalhar(it, "não consegui listar") }
     }
 
     fun revogarSessao(id: String) = viewModelScope.launch {
         val s = _servidor.value ?: return@launch
         runCatching { api.revogar(s, id) }
             .onSuccess { recado("dispositivo desconectado"); carregarSessoes() }
-            .onFailure { recado(it.message ?: "não consegui revogar", erro = true) }
+            .onFailure { aoFalhar(it, "não consegui revogar") }
     }
 
     fun salvarPreferenciasDoServidor(p: Preferencias) = viewModelScope.launch {
@@ -491,7 +535,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 _ajustes.value = _ajustes.value.copy(preferencias = it)
                 recado("salvo no PC")
             }
-            .onFailure { recado(it.message ?: "não consegui salvar", erro = true) }
+            .onFailure { aoFalhar(it, "não consegui salvar") }
     }
 
     fun salvarPrefsLocais(l: PrefsLocais) = viewModelScope.launch { prefs.salvarLocais(l) }
