@@ -57,6 +57,11 @@
         <input type="file" id="entrada-arquivo" multiple hidden>
       </div>
 
+      <div class="nota alerta" id="so-leitura" hidden>
+        Esta pasta é <b>só de leitura</b>. Dá para navegar, ver e baixar para o
+        celular — enviar, renomear e apagar só valem nas pastas compartilhadas.
+      </div>
+
       <div class="trilha" id="trilha"></div>
 
       <div class="chips" style="margin-bottom:14px">
@@ -152,9 +157,10 @@
       <h1>Ajustes</h1>
       <p class="sub">pastas, rede e senha</p>
 
-      <h2>Pastas compartilhadas</h2>
-      <p>O servidor não enxerga <b>nada</b> fora desta lista — nem para ler, nem
-         para escrever. É a única coisa que separa o app do resto do seu PC.</p>
+      <h2>Pastas compartilhadas <span class="rotulo-inline">escrita</span></h2>
+      <p>Onde o celular pode <b>gravar</b>: receber envios, criar pasta, renomear
+         e apagar. Mantenha curta — é o único lugar onde um erro consegue
+         destruir alguma coisa.</p>
       <div id="lista-pastas"></div>
       <div class="chips" style="margin-top:12px">
         <input type="text" id="nova-pasta-caminho" placeholder="/home/você/OutraPasta"
@@ -162,6 +168,24 @@
         <button class="chip" id="bt-add-pasta">adicionar</button>
       </div>
       <div class="nota" id="nota-jaula" hidden></div>
+
+      <h2>Pastas visíveis <span class="rotulo-inline">leitura</span></h2>
+      <p>O que o celular consegue <b>ver e baixar</b>. Por padrão a sua home
+         inteira, para você achar qualquer arquivo sem precisar copiá-lo antes
+         para a pasta compartilhada.</p>
+      <div id="lista-visiveis"></div>
+      <div class="chips" style="margin-top:12px">
+        <input type="text" id="nova-visivel-caminho" placeholder="/home/você/OutraPasta"
+               style="flex:1;min-width:260px">
+        <button class="chip" id="bt-add-visivel">adicionar</button>
+        <button class="chip" id="bt-ver-tudo">ver o PC inteiro</button>
+      </div>
+      <div class="nota">
+        Pastas sensíveis ficam bloqueadas mesmo aqui dentro: <code>.ssh</code>,
+        <code>.gnupg</code>, <code>.config</code> e outras 14. Ver e baixar é
+        tudo que se pode fazer nestas pastas — para gravar, ela precisa estar
+        também na lista de cima.
+      </div>
 
       <h2>Como os arquivos chegam</h2>
       <div id="prefs"></div>

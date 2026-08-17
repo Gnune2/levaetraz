@@ -33,7 +33,7 @@ from fastapi.concurrency import run_in_threadpool
 from . import banco, config as cfg
 from .esquemas import AbrirEnvio, Envio
 from .eventos import bus
-from .jaula import SUFIXO_PARCIAL, CaminhoNegado, jaula
+from .jaula import SUFIXO_PARCIAL, CaminhoNegado, SomenteLeitura, jaula
 
 # Pedaço lido por vez do corpo da requisição. 1 MiB equilibra syscalls e
 # memória; abaixo disso o overhead aparece em arquivos grandes.
@@ -86,8 +86,11 @@ def _resolver_destino(pedido: AbrirEnvio) -> Path:
     prefs = cfg.get_preferencias()
     bruto = pedido.destino or prefs.destino_padrao or cfg.get_pastas()[0]
     try:
-        destino = jaula.validar(bruto)
-    except CaminhoNegado as exc:
+        # validar_escrita, não validar: o celular enxerga a home inteira, mas
+        # só pode DEPOSITAR nas pastas compartilhadas. Sem esta distinção, um
+        # destino escolhido no navegador de arquivos gravaria em qualquer lugar.
+        destino = jaula.validar_escrita(bruto)
+    except (CaminhoNegado, SomenteLeitura) as exc:
         raise ErroEnvio(f'destino recusado: {exc}') from exc
 
     if not destino.is_dir():

@@ -100,8 +100,14 @@ fun MediaBrowserScreen(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     SectionLabel(
-                        if (emSelecao) "${estado.selecionados.size} selecionado(s)"
-                        else "arquivos no PC"
+                        when {
+                            emSelecao -> "${estado.selecionados.size} selecionado(s)"
+                            // Dizer aqui, e não só quando a ação falha: o
+                            // usuário navega a home inteira e precisa saber
+                            // onde está pisando antes de tentar algo.
+                            !estado.gravavel -> "arquivos no PC · só leitura"
+                            else -> "arquivos no PC"
+                        }
                     )
                     Text(
                         estado.path.ifBlank { "…" },

@@ -47,8 +47,12 @@ def _defaults() -> dict:
         'senha_hash': None,
         'sessoes': [],
         'pareamento': None,
-        # A jaula. Lista de permissão: o servidor não enxerga nada fora daqui.
+        # A jaula tem dois níveis — ver servidor/jaula.py.
+        # Escrita: onde o celular pode gravar, renomear e apagar.
         'pastas_compartilhadas': [str(PASTA_PADRAO)],
+        # Leitura: o que o celular consegue ver e baixar. A home inteira por
+        # padrão, para você achar qualquer arquivo sem copiá-lo antes.
+        'pastas_visiveis': [str(Path.home())],
         'pastas_negadas': None,          # None = usa a lista padrão do jaula.py
         'preferencias': Preferencias(destino_padrao=str(PASTA_PADRAO)).model_dump(),
     }
@@ -176,6 +180,14 @@ def get_pastas() -> list[str]:
 
 def set_pastas(pastas: list[str]) -> None:
     _atualizar('pastas_compartilhadas', list(pastas))
+
+
+def get_visiveis() -> list[str]:
+    return list(_ler().get('pastas_visiveis') or [str(Path.home())])
+
+
+def set_visiveis(pastas: list[str]) -> None:
+    _atualizar('pastas_visiveis', list(pastas))
 
 
 def get_negadas() -> Optional[list[str]]:

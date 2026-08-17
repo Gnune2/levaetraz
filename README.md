@@ -3,10 +3,11 @@
 Troca de arquivos entre o seu PC e o seu celular, nos dois sentidos, sem nuvem
 e sem conta em lugar nenhum.
 
-O PC roda um servidor pequeno que expõe **algumas pastas escolhidas** — por
-padrão só `~/Transferencias`. O celular entra nelas por um app Android, e os
-arquivos vão e voltam. Com [Tailscale](https://tailscale.com), funciona igual
-em casa ou no 4G do outro lado do mundo.
+O PC roda um servidor pequeno. Pelo app Android, o celular **navega na sua home
+inteira** e puxa qualquer arquivo — e manda arquivos de volta para uma pasta
+escolhida, por padrão `~/Transferencias`. Com
+[Tailscale](https://tailscale.com), funciona igual em casa ou no 4G do outro
+lado do mundo.
 
 ```
 ┌──────────────┐      HTTP + WebSocket       ┌──────────────┐
@@ -67,16 +68,26 @@ entra como `foto (2).jpg`; o antigo nunca é sobrescrito.
 No sentido contrário, o celular mantém um índice do que já puxou e não baixa de
 novo — a menos que você marque "baixar mesmo assim".
 
-### A jaula
+### A jaula tem dois níveis
 
-O servidor só enxerga o que está dentro das pastas compartilhadas. É lista de
-**permissão**: qualquer caminho fora delas é recusado, e a checagem acontece
-*depois* de resolver os links simbólicos, então um atalho apontando para fora
-não escapa. Nomes de arquivo que chegam pela rede perdem qualquer separador
-antes de tocar o disco.
+|  | alcance padrão | o que permite |
+| --- | --- | --- |
+| **ver** | sua home inteira | navegar, prévia, baixar para o celular |
+| **gravar** | só `~/Transferencias` | receber envio, criar pasta, renomear, apagar |
 
-Quanto menor a pasta compartilhada, menor o estrago se algo der errado. Por isso
-o padrão é uma pasta só.
+A assimetria é o ponto. Olhar demais custa privacidade; gravar demais custa
+dados. Como o uso normal é achar um arquivo qualquer do PC pelo celular sem
+copiá-lo antes, quem abre é a leitura — e a escrita fica num cercado pequeno,
+onde um bug ou um toque errado não destrói nada.
+
+Nos dois casos é lista de **permissão**: caminho fora dela é recusado, e a
+checagem acontece *depois* de resolver os links simbólicos, então um atalho
+apontando para fora não escapa. Pastas sensíveis (`.ssh`, `.gnupg`, `.config` e
+outras 14) ficam bloqueadas mesmo para leitura. Nomes de arquivo que chegam pela
+rede perdem qualquer separador antes de tocar o disco.
+
+As duas listas se ajustam no painel, em **ajustes**. Dá para deixar a leitura
+ver o PC inteiro (`/`), ou apertá-la numa pasta só.
 
 ## Segurança
 
@@ -135,7 +146,7 @@ main.py              entrada; CLI e arranque do uvicorn
 servidor/
   app.py             rotas HTTP + WebSocket
   transferencias.py  o motor de envios (celular → PC)
-  jaula.py           a lista de permissão de caminhos
+  jaula.py           as duas listas de permissão (ver / gravar)
   auth.py            Argon2id, sessões, pareamento, lockout
   arquivos.py        listar, renomear, apagar, espaço em disco
   banco.py           SQLite dos envios

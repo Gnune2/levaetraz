@@ -33,7 +33,8 @@ class NovaSenha(BaseModel):
 class Rede(BaseModel):
     bind: Optional[Literal['auto', 'tailscale', 'lan', 'local']] = None
     porta: Optional[int] = Field(default=None, ge=1, le=65535)
-    pastas: Optional[list[str]] = None
+    pastas: Optional[list[str]] = None       # onde dá para gravar
+    visiveis: Optional[list[str]] = None     # onde dá para olhar
 
 
 class AbrirEnvio(BaseModel):

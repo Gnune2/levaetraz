@@ -30,7 +30,9 @@ from .esquemas import (
     Preferencias, Rede, Renomear,
 )
 from .eventos import bus
-from .jaula import CaminhoNegado, configurar as configurar_jaula, jaula
+from .jaula import (
+    CaminhoNegado, SomenteLeitura, configurar as configurar_jaula, jaula,
+)
 from .transferencias import ErroEnvio
 
 app = FastAPI(title=NOME, version=__version__, docs_url=None, redoc_url=None)
@@ -61,7 +63,7 @@ async def _startup() -> None:
     bus.snapshot_resumo = transferencias.resumo
 
     cfg.garantir_pasta_padrao()
-    configurar_jaula(cfg.get_pastas(), cfg.get_negadas())
+    configurar_jaula(cfg.get_pastas(), cfg.get_visiveis(), cfg.get_negadas())
 
     # O que estava a meio caminho quando o processo morreu vira 'pausado': o
     # .parcial continua no disco e o celular retoma pelo offset.
@@ -296,7 +298,8 @@ async def ver_log(linhas: int = Query(default=60, ge=1, le=500)) -> dict:
 @app.get('/api/config/rede', dependencies=[Depends(sessao_atual)])
 async def ler_rede() -> dict:
     return {'bind': cfg.get_bind(), 'porta': cfg.get_port(),
-            'pastas': cfg.get_pastas(), 'jaula': jaula.descricao()}
+            'pastas': cfg.get_pastas(), 'visiveis': cfg.get_visiveis(),
+            'jaula': jaula.descricao()}
 
 
 @app.put('/api/config/rede', dependencies=[Depends(sessao_atual)])
@@ -310,18 +313,25 @@ async def gravar_rede(body: Rede) -> dict:
     if body.porta:
         cfg.set_port(body.porta)
     if body.pastas is not None:
-        limpas = []
-        for r in body.pastas:
-            p = Path(r).expanduser()
-            if not p.is_dir():
-                raise HTTPException(400, f'não é uma pasta: {r}')
-            limpas.append(str(p.resolve()))
-        if not limpas:
-            raise HTTPException(400, 'precisa de pelo menos uma pasta compartilhada')
-        cfg.set_pastas(limpas)
-        configurar_jaula(limpas, cfg.get_negadas())
+        cfg.set_pastas(_pastas_validas(body.pastas, 'compartilhada'))
+    if body.visiveis is not None:
+        cfg.set_visiveis(_pastas_validas(body.visiveis, 'visível'))
+    if body.pastas is not None or body.visiveis is not None:
+        configurar_jaula(cfg.get_pastas(), cfg.get_visiveis(), cfg.get_negadas())
     return {'ok': True,
             'reiniciar': body.bind is not None or body.porta is not None}
+
+
+def _pastas_validas(brutas: list[str], rotulo: str) -> list[str]:
+    limpas = []
+    for r in brutas:
+        p = Path(r).expanduser()
+        if not p.is_dir():
+            raise HTTPException(400, f'não é uma pasta: {r}')
+        limpas.append(str(p.resolve()))
+    if not limpas:
+        raise HTTPException(400, f'precisa de pelo menos uma pasta {rotulo}')
+    return limpas
 
 
 @app.get('/api/preferencias', dependencies=[Depends(sessao_atual)])
@@ -331,7 +341,7 @@ async def ler_preferencias() -> Preferencias:
 
 @app.put('/api/preferencias', dependencies=[Depends(sessao_atual)])
 async def gravar_preferencias(novo: Preferencias) -> Preferencias:
-    _validar(novo.destino_padrao, 'pasta padrão')
+    _validar_escrita(novo.destino_padrao, 'pasta padrão')
     return cfg.set_preferencias(novo)
 
 
@@ -339,8 +349,19 @@ async def gravar_preferencias(novo: Preferencias) -> Preferencias:
 # ARQUIVOS DO PC
 # ────────────────────────────────────────────────────────────
 def _validar(caminho: str, rotulo: str = 'caminho') -> Path:
+    """Para ver e baixar."""
     try:
         return jaula.validar(caminho)
+    except CaminhoNegado as exc:
+        raise HTTPException(403, f'{rotulo}: {exc}') from exc
+
+
+def _validar_escrita(caminho: str, rotulo: str = 'caminho') -> Path:
+    """Para gravar, renomear ou apagar — cercado bem menor que o de leitura."""
+    try:
+        return jaula.validar_escrita(caminho)
+    except SomenteLeitura as exc:
+        raise HTTPException(403, str(exc)) from exc
     except CaminhoNegado as exc:
         raise HTTPException(403, f'{rotulo}: {exc}') from exc
 
@@ -350,22 +371,38 @@ async def listar_arquivos(caminho: str | None = None,
                           so_pastas: bool = False) -> dict:
     # Sem caminho, começa na primeira pasta compartilhada. Com caminho negado,
     # diz que negou — cair na raiz em silêncio confunde quem está navegando.
-    alvo = _validar(caminho, 'pasta') if caminho else jaula.pastas[0]
+    alvo = _validar(caminho, 'pasta') if caminho else jaula.leitura[0]
     listagem = await run_in_threadpool(arquivos.listar, str(alvo), so_pastas)
     listagem['itens'] = [i for i in listagem['itens'] if jaula.permitido(i['caminho'])]
     if listagem.get('pai') and not jaula.permitido(listagem['pai']):
         listagem['pai'] = None
     listagem['espaco'] = await run_in_threadpool(arquivos.espaco, alvo)
+    # A tela precisa saber se aqui dá para apagar e renomear, senão ela
+    # ofereceria botões que o servidor recusa — pior que não oferecer.
+    listagem['gravavel'] = jaula.gravavel(alvo)
+    for item in listagem['itens']:
+        item['gravavel'] = jaula.gravavel(item['caminho'])
     return listagem
 
 
 @app.get('/api/arquivos/pastas', dependencies=[Depends(sessao_atual)])
-async def pastas_compartilhadas() -> dict:
-    """Os pontos de partida da navegação — uma entrada por pasta compartilhada."""
+async def pastas_de_partida() -> dict:
+    """
+    Onde a navegação pode começar.
+
+    Vêm as duas listas: as compartilhadas (dá para gravar) e as visíveis (só
+    dá para olhar). Marcadas, porque a tela de envio só pode oferecer as
+    primeiras como destino.
+    """
+    vistas: set[str] = set()
     saida = []
-    for p in jaula.pastas:
+    for p, gravavel in ([(x, True) for x in jaula.escrita]
+                        + [(x, False) for x in jaula.leitura]):
+        if str(p) in vistas:
+            continue
+        vistas.add(str(p))
         saida.append({'nome': p.name or str(p), 'caminho': str(p),
-                      'existe': p.is_dir(),
+                      'existe': p.is_dir(), 'gravavel': gravavel,
                       'espaco': await run_in_threadpool(arquivos.espaco, p)})
     return {'pastas': saida}
 
@@ -375,11 +412,16 @@ async def nova_pasta(body: NovaPasta) -> dict:
     try:
         alvo = jaula.validar_para_criar(body.onde, body.nome)
         caminho = await run_in_threadpool(arquivos.criar_pasta, alvo)
+    except SomenteLeitura as exc:
+        raise HTTPException(403, str(exc)) from exc
     except CaminhoNegado as exc:
         raise HTTPException(403, str(exc)) from exc
     except FileExistsError as exc:
         raise HTTPException(409, str(exc)) from exc
     except OSError as exc:
+        # Depois das duas acima de propósito: ambas herdam de PermissionError,
+        # que herda de OSError — invertida, esta linha engoliria as duas e
+        # devolveria 400 em vez de 403.
         raise HTTPException(400, f'não consegui criar: {exc}') from exc
     bus.publicar({'type': 'lista'})
     return {'ok': True, 'caminho': caminho}
@@ -387,7 +429,7 @@ async def nova_pasta(body: NovaPasta) -> dict:
 
 @app.post('/api/arquivos/renomear', dependencies=[Depends(sessao_atual)])
 async def renomear_arquivo(body: Renomear) -> dict:
-    origem = _validar(body.caminho, 'arquivo')
+    origem = _validar_escrita(body.caminho, 'arquivo')
     try:
         caminho = await run_in_threadpool(arquivos.renomear, origem, body.nome_novo)
     except FileExistsError as exc:
@@ -405,9 +447,9 @@ async def apagar_arquivos(body: Apagar) -> dict:
     apagados, erros = [], []
     for bruto in body.caminhos:
         try:
-            alvo = _validar(bruto, 'arquivo')
+            alvo = _validar_escrita(bruto, 'arquivo')
             # Apagar a própria pasta compartilhada seria tirar o chão da jaula.
-            if alvo in jaula.pastas:
+            if alvo in jaula.escrita:
                 raise HTTPException(403, f'{alvo.name} é uma pasta compartilhada')
             await run_in_threadpool(arquivos.apagar, alvo)
             apagados.append(str(alvo))
@@ -609,6 +651,11 @@ async def _drenar_cliente(ws: WebSocket) -> None:
 # ────────────────────────────────────────────────────────────
 @app.exception_handler(CaminhoNegado)
 async def _caminho_negado(_, exc: CaminhoNegado) -> JSONResponse:
+    return JSONResponse(status_code=403, content={'detail': str(exc)})
+
+
+@app.exception_handler(SomenteLeitura)
+async def _somente_leitura(_, exc: SomenteLeitura) -> JSONResponse:
     return JSONResponse(status_code=403, content={'detail': str(exc)})
 
 

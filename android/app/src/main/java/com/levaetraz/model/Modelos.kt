@@ -69,6 +69,8 @@ data class ItemArquivo(
     val tamanho: Long = 0,
     val modificado: Double = 0.0,
     val thumb: Boolean = false,
+    /** Dá para renomear/apagar aqui? Falso fora das pastas compartilhadas. */
+    val gravavel: Boolean = false,
 ) {
     val ehPasta: Boolean get() = tipo == "pasta"
 }
@@ -84,6 +86,8 @@ data class ListagemArquivos(
     val arquivos: Int = 0,
     val bytes: Long = 0,
     val espaco: Espaco = Espaco(),
+    /** A pasta atual aceita escrita? Só as compartilhadas aceitam. */
+    val gravavel: Boolean = false,
     val erro: String? = null,
 )
 
@@ -92,6 +96,8 @@ data class PastaCompartilhada(
     val nome: String = "",
     val caminho: String = "",
     val existe: Boolean = true,
+    /** Falso = só dá para olhar; não serve como destino de envio. */
+    val gravavel: Boolean = false,
     val espaco: Espaco = Espaco(),
 )
 

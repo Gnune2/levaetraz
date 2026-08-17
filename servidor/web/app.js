@@ -9,6 +9,7 @@ let ws = null;
 let caminhoAtual = null;
 let selecionados = new Set();
 let listaAtual = [];
+let gravavelAqui = true;   // a pasta atual aceita escrita?
 let fila = [];                 // uploads pendentes do navegador
 let enviando = false;
 
@@ -188,6 +189,7 @@ async function listarArquivos(caminho) {
 
   caminhoAtual = r.caminho;
   listaAtual = r.itens;
+  gravavelAqui = r.gravavel !== false;
   selecionados.clear();
   desenharSelecao();
   desenharTrilha(r);
@@ -198,6 +200,12 @@ async function listarArquivos(caminho) {
   $('#arq-sub').textContent = r.arquivos
     ? `${r.arquivos} arquivo${r.arquivos > 1 ? 's' : ''} · ${tamanho(r.bytes)}`
     : 'o que está aqui, o celular alcança';
+
+  // Fora das pastas compartilhadas dá para olhar e baixar, mas não mexer.
+  // Esconder os botões é melhor que deixá-los darem 403 quando clicados.
+  $('#zona-solta').hidden = !gravavelAqui;
+  $('#bt-nova-pasta').hidden = !gravavelAqui;
+  $('#so-leitura').hidden = gravavelAqui;
 
   const lista = $('#lista-arquivos');
   lista.innerHTML = '';
@@ -270,6 +278,7 @@ function desenharSelecao() {
   const n = selecionados.size;
   $('#selecao').hidden = n === 0;
   $('#selecao-texto').textContent = `${n} selecionado${n > 1 ? 's' : ''}`;
+  $('#bt-apagar-sel').hidden = !gravavelAqui;
 }
 
 $('#bt-limpar-sel').addEventListener('click', () => {
@@ -651,14 +660,34 @@ async function carregarAjustes() {
     lp.appendChild(el);
   });
 
+  // pastas visíveis (leitura)
+  const lv = $('#lista-visiveis');
+  lv.innerHTML = '';
+  (r.visiveis || []).forEach((caminho, i) => {
+    const el = document.createElement('div');
+    el.className = 'linha';
+    el.innerHTML = `<span class="v" style="text-align:left">${esc(caminho)}</span>`;
+    if ((r.visiveis || []).length > 1) {
+      const bt = document.createElement('button');
+      bt.className = 'chip perigo';
+      bt.textContent = 'remover';
+      bt.addEventListener('click', () =>
+        salvarVisiveis(r.visiveis.filter((_, j) => j !== i)));
+      el.appendChild(bt);
+    }
+    lv.appendChild(el);
+  });
+
   $('#nota-jaula').hidden = !r.jaula.amplo;
   if (r.jaula.amplo) {
     $('#nota-jaula').className = 'nota alerta';
     $('#nota-jaula').innerHTML =
-      '<b>Você compartilhou a home inteira.</b> Funciona, mas qualquer arquivo seu '
-      + 'passa a estar ao alcance de quem tiver a senha. As pastas sensíveis '
-      + `(<code>${r.jaula.negadas.length}</code> delas, como <code>.ssh</code>) `
-      + 'continuam bloqueadas, mas isso é lista de negação: o que for novo entra liberado.';
+      '<b>O celular enxerga o sistema de arquivos inteiro.</b> Gravar continua '
+      + 'limitado às pastas compartilhadas, então nada fora delas corre risco de '
+      + 'ser alterado — mas qualquer arquivo legível pelo seu usuário pode ser '
+      + `baixado. As sensíveis (<code>${r.jaula.negadas.length}</code>, como `
+      + '<code>.ssh</code>) seguem bloqueadas, e isso é lista de negação: pasta '
+      + 'sensível nova entra liberada até alguém lembrar de bloquear.';
   }
 
   // preferências
@@ -724,6 +753,31 @@ async function carregarAjustes() {
     } catch (e) { aviso(e.message, true); }
   });
 }
+
+async function salvarVisiveis(visiveis) {
+  try {
+    await api('/api/config/rede', { method: 'PUT', body: JSON.stringify({ visiveis }) });
+    aviso('pastas visíveis atualizadas');
+    carregarAjustes();
+    caminhoAtual = null;
+  } catch (e) { aviso(e.message, true); }
+}
+
+$('#bt-add-visivel').addEventListener('click', async () => {
+  const novo = $('#nova-visivel-caminho').value.trim();
+  if (!novo) return;
+  const r = await api('/api/config/rede');
+  await salvarVisiveis([...(r.visiveis || []), novo]);
+  $('#nova-visivel-caminho').value = '';
+});
+
+$('#bt-ver-tudo').addEventListener('click', () => {
+  if (!confirm('Deixar o celular ver o sistema de arquivos inteiro (/)?\n\n'
+    + 'As pastas sensíveis continuam bloqueadas, e escrever continua limitado '
+    + 'às pastas compartilhadas — mas qualquer outro arquivo do PC fica '
+    + 'visível e baixável.')) return;
+  salvarVisiveis(['/']);
+});
 
 async function salvarPastas(pastas) {
   try {

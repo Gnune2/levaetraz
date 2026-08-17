@@ -1,24 +1,28 @@
 """
-Jaula de caminhos.
+Jaula de caminhos, com dois níveis.
 
-O servidor só enxerga o que está dentro das **pastas compartilhadas**. Isso é
-lista de permissão, não de proibição: um caminho que não esteja debaixo de uma
-delas é negado, ponto. Sem isso, um `?caminho=/etc/passwd` leria qualquer
-arquivo do PC e um envio poderia escrever em qualquer lugar.
+**Leitura** e **escrita** têm alcances diferentes de propósito:
 
-A checagem acontece **depois** de resolver symlinks, então um link apontando
-para fora da jaula não escapa.
+- ler (navegar, miniatura, baixar para o celular) vale nas *pastas de leitura*,
+  por padrão a home inteira — é o que permite achar um arquivo qualquer no PC
+  pelo celular sem ter que copiá-lo antes para um lugar especial;
+- escrever (receber envio, criar pasta, renomear, apagar) vale só nas *pastas
+  compartilhadas*, por padrão só `~/Transferencias`.
 
-A lista de pastas negadas é a segunda linha de defesa: ela só importa se alguém
-compartilhar uma pasta grande demais (a própria home, por exemplo). Com o
-padrão — só ~/Transferencias — ela nunca é acionada, e é assim que deve ser.
+A assimetria é o ponto. Olhar demais custa privacidade; escrever demais custa
+dados. Como o pedido era "poder olhar tudo", quem abre é a leitura, e a escrita
+continua num cercado pequeno onde um bug ou um toque errado não destrói nada.
+
+Nos dois casos vale a lista de pastas negadas (chaves SSH, credenciais,
+histórico de shell), e a checagem acontece **depois** de resolver symlinks —
+então um link apontando para fora não escapa.
 """
 
 import os
 from pathlib import Path
 
-# Pastas que nunca são expostas, mesmo dentro de uma pasta compartilhada.
-# Nomes relativos à home; qualquer caminho que passe por elas é negado.
+# Pastas que nunca são expostas, nem para leitura. Relativas à home; qualquer
+# caminho que passe por elas é negado.
 NEGADAS_PADRAO = [
     '.ssh',                     # chaves privadas
     '.gnupg',
@@ -41,14 +45,22 @@ class CaminhoNegado(PermissionError):
     """Caminho fora da jaula ou dentro de uma pasta sensível."""
 
 
+class SomenteLeitura(PermissionError):
+    """Dá para ver, mas não para mexer — está fora das pastas compartilhadas."""
+
+
 class Jaula:
-    def __init__(self, pastas: list[str] | None = None,
+    def __init__(self,
+                 escrita: list[str] | None = None,
+                 leitura: list[str] | None = None,
                  negadas: list[str] | None = None):
-        base_padrao = Path.home() / 'Transferencias'
-        self.pastas = [p for p in (self._normalizar(r) for r in (pastas or []))
-                       if p is not None]
-        if not self.pastas:
-            self.pastas = [base_padrao]
+        self.escrita = self._limpar(escrita) or [Path.home() / 'Transferencias']
+        # Sem lista de leitura configurada, lê a home inteira. As pastas de
+        # escrita entram junto: alguém pode compartilhar algo fora da home.
+        self.leitura = self._limpar(leitura) or [Path.home()]
+        for p in self.escrita:
+            if not any(self._dentro(p, r) for r in self.leitura):
+                self.leitura.append(p)
 
         base = Path.home()
         self.negadas: list[Path] = []
@@ -60,13 +72,35 @@ class Jaula:
             self.negadas.append(alvo)
 
     @staticmethod
-    def _normalizar(caminho: str) -> Path | None:
-        try:
-            return Path(caminho).expanduser().resolve()
-        except (OSError, RuntimeError):
-            return None
+    def _limpar(caminhos: list[str] | None) -> list[Path]:
+        saida = []
+        for c in caminhos or []:
+            try:
+                saida.append(Path(c).expanduser().resolve())
+            except (OSError, RuntimeError):
+                continue
+        return saida
 
-    # ── consulta ─────────────────────────────────────────────
+    # ── resolução ────────────────────────────────────────────
+    def _resolver(self, caminho: str | os.PathLike) -> Path:
+        try:
+            alvo = Path(caminho).expanduser().resolve()
+        except (OSError, RuntimeError) as exc:
+            raise CaminhoNegado(f'caminho inválido: {caminho}') from exc
+
+        for negada in self.negadas:
+            if self._dentro(alvo, negada):
+                raise CaminhoNegado(f'pasta protegida ({negada.name})')
+        return alvo
+
+    # ── leitura ──────────────────────────────────────────────
+    def validar(self, caminho: str | os.PathLike) -> Path:
+        """Caminho liberado para ver e baixar. Resolve antes de comparar."""
+        alvo = self._resolver(caminho)
+        if not any(self._dentro(alvo, raiz) for raiz in self.leitura):
+            raise CaminhoNegado('fora das pastas visíveis')
+        return alvo
+
     def permitido(self, caminho: str | os.PathLike) -> bool:
         try:
             self.validar(caminho)
@@ -74,26 +108,22 @@ class Jaula:
         except CaminhoNegado:
             return False
 
-    def validar(self, caminho: str | os.PathLike) -> Path:
-        """
-        Devolve o caminho resolvido se estiver liberado; senão levanta
-        CaminhoNegado. Resolver antes de comparar é o que impede escapar por
-        symlink ou por '..'.
-        """
-        bruto = Path(caminho).expanduser()
-        try:
-            alvo = bruto.resolve()
-        except (OSError, RuntimeError) as exc:
-            raise CaminhoNegado(f'caminho inválido: {caminho}') from exc
-
-        if not any(self._dentro(alvo, pasta) for pasta in self.pastas):
-            raise CaminhoNegado('fora das pastas compartilhadas')
-
-        for negada in self.negadas:
-            if self._dentro(alvo, negada):
-                raise CaminhoNegado(f'pasta protegida ({negada.name})')
-
+    # ── escrita ──────────────────────────────────────────────
+    def validar_escrita(self, caminho: str | os.PathLike) -> Path:
+        """Caminho onde o celular pode gravar, renomear ou apagar."""
+        alvo = self._resolver(caminho)
+        if not any(self._dentro(alvo, raiz) for raiz in self.escrita):
+            raise SomenteLeitura(
+                'esta pasta é só de leitura — para gravar aqui, adicione-a às '
+                'pastas compartilhadas em ajustes')
         return alvo
+
+    def gravavel(self, caminho: str | os.PathLike) -> bool:
+        try:
+            self.validar_escrita(caminho)
+            return True
+        except (CaminhoNegado, SomenteLeitura):
+            return False
 
     def validar_para_criar(self, pai: str | os.PathLike, nome: str) -> Path:
         """
@@ -101,7 +131,7 @@ class Jaula:
         sozinho aqui, porque o alvo não está no disco. Valida a pasta pai (essa
         sim existe) e só então junta o nome, que já veio sem separador.
         """
-        pasta = self.validar(pai)
+        pasta = self.validar_escrita(pai)
         if not pasta.is_dir():
             raise CaminhoNegado('destino não é uma pasta')
         limpo = str(nome).replace('\\', '/').split('/')[-1].replace('\x00', '')
@@ -109,26 +139,28 @@ class Jaula:
             raise CaminhoNegado('nome de arquivo inválido')
         return pasta / limpo
 
+    # ── util ─────────────────────────────────────────────────
     @staticmethod
     def _dentro(alvo: Path, base: Path) -> bool:
         return alvo == base or base in alvo.parents
 
     def raiz_para(self, caminho: str | os.PathLike | None) -> Path:
-        """Caminho seguro para começar a navegar: o pedido, ou a 1ª pasta."""
+        """Caminho seguro para começar a navegar: o pedido, ou a 1ª de leitura."""
         if caminho:
             try:
                 return self.validar(caminho)
             except CaminhoNegado:
                 pass
-        return self.pastas[0]
+        return self.leitura[0]
 
     def descricao(self) -> dict:
         return {
-            'pastas': [str(p) for p in self.pastas],
+            'escrita': [str(p) for p in self.escrita],
+            'leitura': [str(p) for p in self.leitura],
             'negadas': [str(n) for n in self.negadas],
-            # A home inteira compartilhada é legal? Sim. Mas quem fez isso
-            # merece ver escrito na tela que fez.
-            'amplo': any(p == Path.home() or p == Path('/') for p in self.pastas),
+            # A raiz do sistema inteira em leitura é legal? É. Mas quem fez
+            # isso merece ver escrito na tela que fez.
+            'amplo': any(p == Path('/') for p in self.leitura),
         }
 
 
@@ -136,7 +168,9 @@ class Jaula:
 jaula = Jaula()
 
 
-def configurar(pastas: list[str] | None, negadas: list[str] | None = None) -> Jaula:
+def configurar(escrita: list[str] | None,
+               leitura: list[str] | None = None,
+               negadas: list[str] | None = None) -> Jaula:
     global jaula
-    jaula = Jaula(pastas, negadas)
+    jaula = Jaula(escrita, leitura, negadas)
     return jaula

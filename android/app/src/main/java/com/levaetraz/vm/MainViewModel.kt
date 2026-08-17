@@ -50,6 +50,8 @@ data class BrowserState(
     /** Quando ligado, ignora o índice e baixa de novo o que for selecionado. */
     val forcarRebaixar: Boolean = false,
     val espacoLivre: Long = 0,
+    /** A pasta aberta aceita escrita? Muda o que a tela pode oferecer. */
+    val gravavel: Boolean = false,
 )
 
 data class EnvioState(
@@ -256,6 +258,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                     jaNoCelular = jaTem,
                     forcarRebaixar = _navegador.value.forcarRebaixar,
                     espacoLivre = r.espaco.livre,
+                    gravavel = r.gravavel,
                     erro = r.erro,
                 )
             }
@@ -348,7 +351,12 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun carregarPastasDoPc() = viewModelScope.launch {
         val s = _servidor.value ?: return@launch
         runCatching { api.pastas(s) }
-            .onSuccess { _envio.value = _envio.value.copy(pastasDoPc = it.pastas) }
+            // Só as graváveis viram chip de destino: oferecer uma pasta de
+            // leitura seria oferecer um envio que o servidor vai recusar.
+            .onSuccess { r ->
+                _envio.value = _envio.value.copy(
+                    pastasDoPc = r.pastas.filter { it.gravavel })
+            }
     }
 
     fun cancelarEnvios() {

@@ -7,10 +7,10 @@ const AJUDA = `
 <p class="sub">o PC vira um servidor de arquivos que só você alcança</p>
 
 <h2>A ideia</h2>
-<p>Seu PC roda um servidor pequeno que expõe <b>algumas pastas escolhidas</b> —
-por padrão só <code>~/Transferencias</code>. O celular entra nelas pelo app, e
-os arquivos vão nos dois sentidos: puxar do PC ou mandar para o PC. Nada passa
-por servidor de terceiro, e não existe conta em lugar nenhum.</p>
+<p>Seu PC roda um servidor pequeno. Pelo app, o celular <b>navega na sua home
+inteira</b> e puxa qualquer arquivo — e manda arquivos de volta para uma pasta
+escolhida, por padrão <code>~/Transferencias</code>. Nada passa por servidor de
+terceiro, e não existe conta em lugar nenhum.</p>
 
 <h2>Os dois sentidos</h2>
 <table>
@@ -38,13 +38,25 @@ pergunta. Se esse conteúdo já estiver no PC, o servidor responde
 <p>Se o nome já existir mas o conteúdo for diferente, o novo entra como
 <code>foto (2).jpg</code>. O antigo nunca é sobrescrito.</p>
 
-<h2>A jaula</h2>
-<p>O servidor só enxerga o que está dentro das pastas compartilhadas. É lista de
-<b>permissão</b>: qualquer caminho fora delas é recusado, e a checagem acontece
-depois de resolver os links simbólicos — então um atalho apontando para fora não
-escapa.</p>
-<div class="nota">Quanto menor a pasta compartilhada, menor o estrago se algo
-der errado. O padrão de uma pasta só existe por isso.</div>
+<h2>A jaula tem dois níveis</h2>
+<table>
+  <tr><th></th><th>alcance padrão</th><th>o que permite</th></tr>
+  <tr><td><b>ver</b></td><td>sua home inteira</td>
+      <td>navegar, prévia e baixar para o celular</td></tr>
+  <tr><td><b>gravar</b></td><td>só <code>~/Transferencias</code></td>
+      <td>receber envio, criar pasta, renomear, apagar</td></tr>
+</table>
+<p>A assimetria é o ponto. Olhar demais custa privacidade; gravar demais custa
+dados. Como você quer achar qualquer arquivo do PC pelo celular sem copiá-lo
+antes, quem abre é a leitura — e a escrita fica num cercado pequeno, onde um bug
+ou um toque errado não destrói nada.</p>
+<p>Nos dois casos é lista de <b>permissão</b>: caminho fora dela é recusado, e a
+checagem acontece depois de resolver os links simbólicos, então um atalho
+apontando para fora não escapa. Pastas sensíveis (<code>.ssh</code>,
+<code>.gnupg</code>, <code>.config</code> e outras 14) ficam bloqueadas mesmo
+para leitura.</p>
+<div class="nota">As duas listas se ajustam em <b>ajustes</b>. Dá para deixar a
+leitura ver o PC inteiro, ou apertá-la numa pasta só.</div>
 
 <h2>Segurança</h2>
 <ul>
