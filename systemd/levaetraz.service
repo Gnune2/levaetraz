@@ -1,0 +1,54 @@
+[Unit]
+Description=levaetraz — troca de arquivos PC ↔ celular
+Documentation=file://@RAIZ@/README.md
+# Espera a rede existir, mas não depende dela pra subir: se o Wi-Fi cair e
+# voltar, o servidor continua de pé (o uvicorn segura o socket).
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=notify
+NotifyAccess=main
+
+WorkingDirectory=@RAIZ@
+ExecStart=@RAIZ@/.venv/bin/python main.py
+
+# ── Durabilidade ────────────────────────────────────────────
+# Religa sempre, inclusive quando o processo sai com código 0.
+Restart=always
+RestartSec=3
+# Sem limite de tentativas: nunca desiste de subir.
+StartLimitIntervalSec=0
+
+# Watchdog: o servidor tem que dar sinal de vida a cada 30s. Se o event loop
+# travar (deadlock, thread presa, disco parado), o processo continua "vivo" e
+# inútil — Restart=always sozinho não pegaria isso. Aqui o systemd mata e sobe.
+WatchdogSec=60
+
+TimeoutStartSec=120
+TimeoutStopSec=30
+KillSignal=SIGINT
+KillMode=mixed
+
+# ── Blindagem ───────────────────────────────────────────────
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+RestrictRealtime=true
+LockPersonality=true
+# O servidor precisa escrever nos downloads e ler a home, então não dá pra
+# usar ProtectHome — a jaula de caminhos (server/paths.py) é quem limita isso.
+ProtectSystem=full
+
+# ── Logs ────────────────────────────────────────────────────
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=levaetraz
+
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=default.target

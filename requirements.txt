@@ -1,0 +1,12 @@
+# ── servidor ────────────────────────────────────────────────
+fastapi>=0.115
+uvicorn[standard]>=0.32
+pydantic>=2.9
+websockets>=13
+qrcode>=8
+argon2-cffi>=23        # hash da senha (Argon2id)
+
+# ── miniaturas ──────────────────────────────────────────────
+# Só para gerar as thumbs de imagem. Vídeo usa o ffmpeg do sistema, que é
+# opcional: sem ele o arquivo aparece com ícone em vez de prévia.
+Pillow

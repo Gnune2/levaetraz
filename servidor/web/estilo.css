@@ -1,0 +1,281 @@
+/* Painel do levaetraz. Mesma paleta do app Android — dark minimalista,
+   um acento só, nenhuma cor decorativa. */
+:root {
+  --bg: #0a0a0a;
+  --surface: #141414;
+  --surface-alta: #1c1c1c;
+  --borda: #262626;
+  --borda-suave: #1f1f1f;
+  --acento: #00c896;
+  --acento-fraco: #00785a;
+  --texto: #ededed;
+  --texto-fraco: #9a9a9a;
+  --texto-apagado: #5a5a5a;
+  --ok: #00c896;
+  --aviso: #f0a500;
+  --erro: #e05252;
+  --mono: ui-monospace, "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace;
+  --r: 12px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* O atributo `hidden` esconde via display:none do estilo do navegador, mas
+   qualquer `display` declarado aqui ganha dele. Sem esta regra, .login e .app
+   (ambos flex) apareceriam mesmo marcados como hidden. */
+[hidden] { display: none !important; }
+
+body {
+  background: var(--bg);
+  color: var(--texto);
+  font: 15px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── estrutura ─────────────────────────────────────────── */
+.app { display: flex; min-height: 100vh; }
+
+nav {
+  width: 220px; flex-shrink: 0;
+  background: var(--surface);
+  border-right: 1px solid var(--borda-suave);
+  padding: 20px 12px;
+  display: flex; flex-direction: column; gap: 4px;
+  position: sticky; top: 0; height: 100vh; overflow-y: auto;
+}
+
+.marca { font-size: 19px; font-weight: 700; padding: 0 10px 18px; letter-spacing: -.3px; }
+.marca span { color: var(--acento); }
+
+nav button {
+  display: flex; align-items: center; gap: 10px;
+  background: none; border: 0; color: var(--texto-fraco);
+  font: inherit; text-align: left; cursor: pointer;
+  padding: 10px 12px; border-radius: 9px; width: 100%;
+  transition: background .15s, color .15s;
+}
+nav button:hover { background: var(--surface-alta); color: var(--texto); }
+nav button[aria-current="page"] { background: rgba(0,200,150,.12); color: var(--acento); }
+nav button .ic { width: 18px; text-align: center; opacity: .85; }
+
+.rodape-nav { margin-top: auto; padding: 12px 10px 0; border-top: 1px solid var(--borda-suave); }
+
+main { flex: 1; padding: 28px 34px 60px; max-width: 1100px; }
+
+/* ── tipografia ────────────────────────────────────────── */
+h1 { font-size: 26px; font-weight: 700; letter-spacing: -.4px; margin-bottom: 6px; }
+h2 { font-size: 17px; font-weight: 600; margin: 30px 0 12px; }
+h3 { font-size: 14px; font-weight: 600; margin: 20px 0 8px; }
+.sub { color: var(--texto-apagado); margin-bottom: 26px; }
+p { margin-bottom: 12px; color: var(--texto-fraco); }
+a { color: var(--acento); }
+code, .mono { font-family: var(--mono); font-size: .88em; }
+code { background: var(--surface-alta); padding: 2px 6px; border-radius: 5px; color: var(--texto); }
+pre {
+  background: var(--surface); border: 1px solid var(--borda);
+  border-radius: 9px; padding: 14px 16px; overflow-x: auto;
+  font-family: var(--mono); font-size: 13px; line-height: 1.6; margin-bottom: 14px;
+}
+.rotulo {
+  font-family: var(--mono); font-size: 10px; letter-spacing: 1px;
+  text-transform: uppercase; color: var(--texto-apagado); margin-bottom: 8px;
+}
+
+/* ── cartões ───────────────────────────────────────────── */
+.cartao {
+  background: var(--surface); border: 1px solid var(--borda);
+  border-radius: var(--r); padding: 18px 20px; margin-bottom: 14px;
+}
+.grade { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+
+.metrica .valor { font-size: 25px; font-weight: 700; letter-spacing: -.5px; }
+.metrica .nome { font-family: var(--mono); font-size: 10px; letter-spacing: 1px;
+                 text-transform: uppercase; color: var(--texto-apagado); margin-bottom: 6px; }
+.metrica .detalhe { font-size: 12px; color: var(--texto-apagado); margin-top: 3px; }
+
+.linha { display: flex; justify-content: space-between; align-items: center;
+         gap: 16px; padding: 9px 0; border-bottom: 1px solid var(--borda-suave); }
+.linha:last-child { border-bottom: 0; }
+.linha .k { color: var(--texto-apagado); font-size: 13px; }
+.linha .v { font-family: var(--mono); font-size: 13px; text-align: right;
+            word-break: break-all; }
+
+/* ── estado ────────────────────────────────────────────── */
+.ponto { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+.ponto.ok { background: var(--ok); box-shadow: 0 0 8px rgba(0,200,150,.55); }
+.ponto.aviso { background: var(--aviso); }
+.ponto.erro { background: var(--erro); }
+.ponto.off { background: var(--texto-apagado); }
+
+.selo {
+  display: inline-block; font-family: var(--mono); font-size: 10px;
+  letter-spacing: .8px; padding: 3px 7px; border-radius: 5px;
+  border: 1px solid currentColor; opacity: .95;
+}
+
+/* ── controles ─────────────────────────────────────────── */
+input[type=text], input[type=password], input[type=number], select {
+  width: 100%; background: var(--surface-alta); color: var(--texto);
+  border: 1px solid var(--borda); border-radius: 9px;
+  padding: 11px 13px; font: inherit; transition: border-color .15s;
+}
+input:focus, select:focus { outline: 0; border-color: var(--acento); }
+input::placeholder { color: var(--texto-apagado); }
+label { display: block; margin-bottom: 14px; }
+label .txt { font-family: var(--mono); font-size: 10px; letter-spacing: 1px;
+             text-transform: uppercase; color: var(--texto-apagado);
+             display: block; margin-bottom: 6px; }
+
+button.bt {
+  background: var(--acento); color: var(--bg); border: 0;
+  border-radius: 9px; padding: 11px 20px; font: inherit; font-weight: 600;
+  cursor: pointer; transition: filter .15s;
+}
+button.bt:hover:not(:disabled) { filter: brightness(1.12); }
+button.bt:disabled { background: var(--surface-alta); color: var(--texto-apagado); cursor: not-allowed; }
+button.bt.fraco { background: var(--surface-alta); color: var(--texto); }
+button.bt.perigo { background: var(--surface-alta); color: var(--erro); }
+
+.chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--surface); border: 1px solid var(--borda);
+  color: var(--texto-fraco); border-radius: 8px;
+  padding: 7px 13px; font-size: 13px; cursor: pointer;
+  transition: all .15s; font-family: inherit;
+}
+.chip:hover { border-color: var(--texto-apagado); color: var(--texto); }
+.chip[aria-pressed="true"] { border-color: var(--acento); color: var(--acento);
+                             background: rgba(0,200,150,.1); }
+.chip:disabled { opacity: .35; cursor: not-allowed; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+
+/* ── barra de progresso ────────────────────────────────── */
+.barra { height: 4px; background: var(--surface-alta); border-radius: 3px; overflow: hidden; }
+.barra > i { display: block; height: 100%; background: var(--acento);
+             border-radius: 3px; transition: width .35s ease; }
+
+/* ── fila ──────────────────────────────────────────────── */
+.job { background: var(--surface); border: 1px solid var(--borda);
+       border-radius: 10px; padding: 13px 15px; margin-bottom: 8px; }
+.job.filho { margin-left: 22px; }
+.job .topo { display: flex; align-items: center; gap: 10px; margin-bottom: 7px; }
+.job .titulo { flex: 1; min-width: 0; overflow: hidden;
+               text-overflow: ellipsis; white-space: nowrap; }
+.job .url { font-size: 12px; color: var(--texto-apagado); overflow: hidden;
+            text-overflow: ellipsis; white-space: nowrap; }
+.job .estado { font-family: var(--mono); font-size: 11px; margin-top: 7px;
+               display: flex; justify-content: space-between; gap: 12px; }
+.acao { background: none; border: 0; color: var(--texto-apagado); cursor: pointer;
+        font-size: 15px; padding: 4px 7px; border-radius: 6px; }
+.acao:hover { background: var(--surface-alta); color: var(--texto); }
+
+/* ── arquivos ──────────────────────────────────────────── */
+.arquivos { display: grid; gap: 8px;
+            grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); }
+.arq { position: relative; aspect-ratio: 1; border-radius: 9px; overflow: hidden;
+       background: var(--surface); border: 2px solid transparent; cursor: pointer; }
+.arq[aria-selected="true"] { border-color: var(--acento); }
+.arq img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.arq .icone { position: absolute; inset: 0; display: flex; align-items: center;
+              justify-content: center; font-size: 30px; color: var(--texto-apagado); }
+.arq .nome { position: absolute; left: 0; right: 0; bottom: 0;
+             background: linear-gradient(transparent, rgba(10,10,10,.92));
+             padding: 16px 7px 6px; font-size: 11px; overflow: hidden;
+             text-overflow: ellipsis; white-space: nowrap; }
+.arq .tam { font-size: 10px; color: var(--texto-apagado); }
+.arq .marca-play { position: absolute; inset: 0; display: flex; align-items: center;
+                   justify-content: center; font-size: 26px; color: rgba(255,255,255,.85); }
+
+/* ── zona de soltar ────────────────────────────────────── */
+.solta {
+  border: 1.5px dashed var(--borda); border-radius: var(--r);
+  padding: 26px 20px; text-align: center; margin-bottom: 20px;
+  color: var(--texto-apagado); transition: border-color .15s, background .15s;
+}
+.solta.ativa { border-color: var(--acento); background: rgba(0,200,150,.06); }
+.solta strong { color: var(--texto); font-weight: 600; }
+.solta-dentro span { display: block; font-size: 13px; margin-top: 6px; }
+.link { background: none; border: 0; color: var(--acento); font: inherit;
+        cursor: pointer; text-decoration: underline; padding: 0; }
+
+/* ── trilha de navegação ───────────────────────────────── */
+.trilha { display: flex; flex-wrap: wrap; align-items: center; gap: 2px;
+          margin-bottom: 14px; font-size: 13px; }
+.trilha button { background: none; border: 0; color: var(--texto-fraco);
+                 font: inherit; cursor: pointer; padding: 4px 7px;
+                 border-radius: 6px; }
+.trilha button:hover { background: var(--surface-alta); color: var(--texto); }
+.trilha button:last-child { color: var(--texto); font-weight: 600; }
+.trilha .sep { color: var(--texto-apagado); }
+
+/* ── seleção ───────────────────────────────────────────── */
+.barra-selecao {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  background: var(--surface); border: 1px solid var(--acento-fraco);
+  border-radius: 10px; padding: 10px 14px; margin-bottom: 14px; font-size: 14px;
+}
+.chip.perigo { color: var(--erro); border-color: rgba(224,82,82,.4); }
+.chip.perigo:hover { border-color: var(--erro); }
+.cresce { flex: 1; }
+
+/* ── envios ────────────────────────────────────────────── */
+.envio { background: var(--surface); border: 1px solid var(--borda);
+         border-radius: 10px; padding: 13px 15px; margin-bottom: 8px; }
+.envio .topo { display: flex; align-items: center; gap: 10px; margin-bottom: 7px; }
+.envio .nome { flex: 1; min-width: 0; overflow: hidden;
+               text-overflow: ellipsis; white-space: nowrap; }
+.envio .meta { font-family: var(--mono); font-size: 11px; margin-top: 7px;
+               display: flex; justify-content: space-between; gap: 12px;
+               color: var(--texto-apagado); }
+.envio .meta .destaque { color: var(--texto-fraco); }
+
+/* ── QR ────────────────────────────────────────────────── */
+.qr { display: inline-block; background: #fff; padding: 14px; border-radius: 10px; }
+.qr svg { width: 220px; height: 220px; display: block; }
+
+/* ── ajuda ─────────────────────────────────────────────── */
+.ajuda h2 { border-bottom: 1px solid var(--borda-suave); padding-bottom: 8px; }
+.ajuda ul, .ajuda ol { margin: 0 0 14px 20px; color: var(--texto-fraco); }
+.ajuda li { margin-bottom: 6px; }
+.ajuda table { width: 100%; border-collapse: collapse; margin-bottom: 16px; font-size: 14px; }
+.ajuda th, .ajuda td { text-align: left; padding: 8px 10px;
+                       border-bottom: 1px solid var(--borda-suave); }
+.ajuda th { font-family: var(--mono); font-size: 10px; letter-spacing: 1px;
+            text-transform: uppercase; color: var(--texto-apagado); }
+.ajuda td { color: var(--texto-fraco); }
+.ajuda td:first-child { color: var(--texto); white-space: nowrap; }
+
+.nota { border-left: 2px solid var(--acento); padding: 10px 0 10px 14px;
+        margin: 14px 0; color: var(--texto-fraco); background: rgba(0,200,150,.04); }
+.nota.alerta { border-color: var(--aviso); background: rgba(240,165,0,.05); }
+
+/* ── avisos ────────────────────────────────────────────── */
+#avisos { position: fixed; right: 20px; bottom: 20px; z-index: 50;
+          display: flex; flex-direction: column; gap: 8px; max-width: 380px; }
+/* Escopado no #avisos de propósito: `.aviso` solto também é o modificador da
+   bolinha de estado (.ponto.aviso), e sem o escopo a bolinha herdava padding,
+   fundo e borda do toast — virava um retângulo laranja no meio da lista. */
+#avisos .aviso {
+  background: var(--surface-alta); border: 1px solid var(--borda);
+  border-left: 3px solid var(--acento); border-radius: 9px;
+  padding: 12px 15px; font-size: 14px; box-shadow: 0 6px 24px rgba(0,0,0,.5);
+  animation: entra .2s ease;
+}
+#avisos .aviso.erro { border-left-color: var(--erro); color: var(--erro); }
+@keyframes entra { from { opacity: 0; transform: translateY(8px); } }
+
+/* ── login ─────────────────────────────────────────────── */
+.login { min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+.login .caixa { width: 100%; max-width: 360px; padding: 30px; }
+.login .marca { font-size: 27px; padding-bottom: 6px; }
+
+.vazio { color: var(--texto-apagado); text-align: center; padding: 44px 20px; }
+
+@media (max-width: 760px) {
+  .app { flex-direction: column; }
+  nav { width: auto; height: auto; position: static; flex-direction: row;
+        overflow-x: auto; padding: 10px; }
+  nav .marca, .rodape-nav { display: none; }
+  nav button { white-space: nowrap; }
+  main { padding: 20px 16px 50px; }
+}

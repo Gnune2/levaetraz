@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- O tema real é definido em Compose; isto é só o shell da janela,
+         já escuro para não piscar branco no arranque. -->
+    <style name="Theme.LevaeTraz" parent="android:Theme.Material.NoActionBar">
+        <item name="android:statusBarColor">#0A0A0A</item>
+        <item name="android:navigationBarColor">#0A0A0A</item>
+        <item name="android:windowBackground">#0A0A0A</item>
+    </style>
+</resources>

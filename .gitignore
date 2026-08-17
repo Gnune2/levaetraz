@@ -1,0 +1,41 @@
+# ── Python ──────────────────────────────────────────────────
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+# ── Android ─────────────────────────────────────────────────
+android/local.properties
+android/.gradle/
+android/.kotlin/
+android/build/
+android/app/build/
+android/captures/
+android/.idea/
+android/*.iml
+android/app/*.iml
+*.apk
+*.aab
+*.keystore
+*.jks
+
+# ── Editores / SO ───────────────────────────────────────────
+.idea/
+.vscode/
+*.swp
+.DS_Store
+
+# ── Nada aqui é segredo, mas por garantia ───────────────────
+# A senha, as sessões e os envios vivem em ~/.config/levaetraz/,
+# fora do repositório. Estas regras são rede de segurança caso
+# alguém rode o servidor com HOME apontando para cá.
+config.json
+envios.db
+envios.db-*
+*.pem
+*.key
+levaetraz.desktop
+app.apk
+app.apk.versao
+app.apk.parcial

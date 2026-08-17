@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>levaetraz</title>
+  <link rel="stylesheet" href="/web/estilo.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>&#8646;</text></svg>">
+</head>
+<body>
+
+<!-- ── LOGIN ────────────────────────────────────────────── -->
+<div class="login" id="login" hidden>
+  <div class="caixa">
+    <div class="marca">leva<span>etraz</span></div>
+    <p class="sub" id="login-sub">entre com a senha do servidor</p>
+    <form id="form-login">
+      <input type="password" id="senha" placeholder="senha" autocomplete="current-password" required>
+      <input type="password" id="senha2" placeholder="repita a senha" autocomplete="new-password" hidden>
+      <button class="bt" type="submit" id="bt-entrar">ENTRAR</button>
+    </form>
+    <div class="nota" id="login-nota" hidden></div>
+  </div>
+</div>
+
+<!-- ── PAINEL ───────────────────────────────────────────── -->
+<div class="app" id="painel" hidden>
+  <nav>
+    <div class="marca">leva<span>etraz</span></div>
+    <button data-aba="arquivos" aria-current="page"><span class="ic">▤</span> arquivos</button>
+    <button data-aba="transferencias"><span class="ic">⇄</span> transferências</button>
+    <button data-aba="celular"><span class="ic">▢</span> celular</button>
+    <button data-aba="dispositivos"><span class="ic">▣</span> dispositivos</button>
+    <button data-aba="ajustes"><span class="ic">⚙</span> ajustes</button>
+    <button data-aba="ajuda"><span class="ic">?</span> como funciona</button>
+    <div class="rodape-nav">
+      <div id="estado-servidor" class="mono" style="font-size:12px;color:var(--texto-apagado)"></div>
+      <button id="bt-sair" style="margin-top:8px;color:var(--texto-apagado)">
+        <span class="ic">⏻</span> sair
+      </button>
+    </div>
+  </nav>
+
+  <main>
+    <div id="avisos"></div>
+
+    <!-- ARQUIVOS -->
+    <section data-painel="arquivos">
+      <h1>Arquivos no PC</h1>
+      <p class="sub" id="arq-sub">o que está aqui, o celular alcança</p>
+
+      <div id="zona-solta" class="solta">
+        <div class="solta-dentro">
+          <strong>Solte arquivos aqui</strong> para mandar para o PC
+          <span>ou <button class="link" id="bt-escolher">escolha do computador</button></span>
+        </div>
+        <input type="file" id="entrada-arquivo" multiple hidden>
+      </div>
+
+      <div class="trilha" id="trilha"></div>
+
+      <div class="chips" style="margin-bottom:14px">
+        <button class="chip" id="bt-nova-pasta">nova pasta</button>
+        <button class="chip" id="bt-atualizar">atualizar</button>
+        <span class="cresce"></span>
+        <span class="mono" id="arq-espaco" style="color:var(--texto-apagado);font-size:12px"></span>
+      </div>
+
+      <div id="selecao" class="barra-selecao" hidden>
+        <span id="selecao-texto"></span>
+        <button class="chip" id="bt-baixar-sel">baixar</button>
+        <button class="chip perigo" id="bt-apagar-sel">apagar</button>
+        <button class="chip" id="bt-limpar-sel">limpar seleção</button>
+      </div>
+
+      <div class="arquivos" id="lista-arquivos"></div>
+      <div class="vazio" id="arq-vazio" hidden></div>
+    </section>
+
+    <!-- TRANSFERÊNCIAS -->
+    <section data-painel="transferencias" hidden>
+      <h1>Transferências</h1>
+      <p class="sub">o que o celular mandou para cá</p>
+
+      <div class="cartao" id="cartao-resumo" hidden>
+        <div id="resumo-texto" style="margin-bottom:10px"></div>
+        <div class="barra"><i id="resumo-barra" style="width:0%"></i></div>
+      </div>
+
+      <div class="chips" style="margin-bottom:16px">
+        <button class="chip" id="bt-limpar-hist">limpar concluídos</button>
+      </div>
+
+      <div id="lista-envios"></div>
+      <div class="vazio" id="env-vazio" hidden>
+        Nada ainda. Mande um arquivo pelo app do celular e ele aparece aqui.
+      </div>
+    </section>
+
+    <!-- CELULAR -->
+    <section data-painel="celular" hidden>
+      <h1>Celular</h1>
+      <p class="sub">instalar o app e conectar, em dois passos</p>
+
+      <div class="cartao">
+        <h3 style="margin-top:0">1 · Instalar o app</h3>
+        <div id="apk-estado"></div>
+        <div id="apk-qr" hidden style="margin-top:18px;text-align:center">
+          <div id="apk-qr-svg" class="qr"></div>
+          <p style="margin-top:12px">Aponte a câmera do celular para o QR.
+             Ele baixa o app direto deste servidor.</p>
+          <div class="nota aviso" style="text-align:left">
+            O Android vai pedir permissão para instalar de <b>fontes desconhecidas</b> —
+            é normal para app fora da Play Store.
+          </div>
+        </div>
+      </div>
+
+      <div class="cartao">
+        <h3 style="margin-top:0">2 · Conectar ao servidor</h3>
+        <p>Depois de instalar, abra o app e toque em <b>LER QR CODE</b>.
+           Este código vale 10 minutos e serve uma vez só.</p>
+        <button class="bt" id="bt-parear">GERAR QR DE PAREAMENTO</button>
+        <div id="par-qr" hidden style="margin-top:18px;text-align:center">
+          <div id="par-qr-svg" class="qr"></div>
+          <div class="mono" style="margin-top:12px;font-size:13px" id="par-endereco"></div>
+        </div>
+      </div>
+
+      <div class="cartao">
+        <h3 style="margin-top:0">Acesso de fora de casa</h3>
+        <div id="vpn-estado"></div>
+      </div>
+    </section>
+
+    <!-- DISPOSITIVOS -->
+    <section data-painel="dispositivos" hidden>
+      <h1>Dispositivos</h1>
+      <p class="sub">quem tem sessão aberta neste servidor</p>
+      <div id="lista-sessoes"></div>
+      <button class="bt secundario" id="bt-revogar-todas" style="margin-top:18px">
+        DESCONECTAR TODOS
+      </button>
+      <div class="nota">
+        Isso derruba inclusive este painel. Você entra de novo com a senha; o
+        celular precisa de um QR de pareamento novo.
+      </div>
+    </section>
+
+    <!-- AJUSTES -->
+    <section data-painel="ajustes" hidden>
+      <h1>Ajustes</h1>
+      <p class="sub">pastas, rede e senha</p>
+
+      <h2>Pastas compartilhadas</h2>
+      <p>O servidor não enxerga <b>nada</b> fora desta lista — nem para ler, nem
+         para escrever. É a única coisa que separa o app do resto do seu PC.</p>
+      <div id="lista-pastas"></div>
+      <div class="chips" style="margin-top:12px">
+        <input type="text" id="nova-pasta-caminho" placeholder="/home/você/OutraPasta"
+               style="flex:1;min-width:260px">
+        <button class="chip" id="bt-add-pasta">adicionar</button>
+      </div>
+      <div class="nota" id="nota-jaula" hidden></div>
+
+      <h2>Como os arquivos chegam</h2>
+      <div id="prefs"></div>
+
+      <h2>Rede</h2>
+      <div id="rede-form"></div>
+
+      <h2>Senha</h2>
+      <form id="form-senha" class="chips">
+        <input type="password" id="senha-atual" placeholder="senha atual" autocomplete="current-password">
+        <input type="password" id="senha-nova" placeholder="senha nova (mín. 8)" autocomplete="new-password">
+        <button class="chip" type="submit">trocar</button>
+      </form>
+      <div class="nota">Trocar a senha desconecta todos os dispositivos, inclusive este painel.</div>
+
+      <h2>Manutenção</h2>
+      <div class="chips">
+        <button class="chip" id="bt-limpar-thumbs">limpar miniaturas</button>
+        <button class="chip" id="bt-ver-log">ver o log do servidor</button>
+      </div>
+      <pre id="log" hidden></pre>
+    </section>
+
+    <!-- AJUDA -->
+    <section data-painel="ajuda" hidden>
+      <div id="conteudo-ajuda"></div>
+    </section>
+  </main>
+</div>
+
+<script src="/web/ajuda.js"></script>
+<script src="/web/app.js"></script>
+</body>
+</html>
