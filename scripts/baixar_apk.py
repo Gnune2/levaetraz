@@ -6,7 +6,9 @@ Compilar o app num PC limpo exigiria ~3 GB de Android SDK e JDK, o que não faz
 sentido para quem só quer rodar o servidor. Então o APK vive como release e o
 painel serve ele para o celular baixar por QR.
 
-O repositório é privado, então o download passa pelo `gh` (que já autentica).
+O download passa pelo `gh` porque ele já resolve qual é o release mais recente
+e cuida de redirecionamento e retomada — não é por autenticação: o repositório
+é público.
 """
 
 import json
@@ -17,7 +19,7 @@ import sys
 from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parent.parent
-DESTINO = RAIZ / 'server' / 'web' / 'app.apk'
+DESTINO = RAIZ / 'servidor' / 'web' / 'app.apk'
 REPO = 'Gnune2/levaetraz'
 
 
